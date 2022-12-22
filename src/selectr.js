@@ -290,7 +290,10 @@
     var createItem = function(option, data) {
         data = data || option;
         var elementData =  {
-            class: "selectr-option",
+            // JMFA:
+            //class: "selectr-option",
+            // JMFA:
+            class: ("selectr-option"+" "+option.className).trim(),    // JMFA: classes from "option" applied to "li"
             role: "treeitem",
             "aria-selected": false
         };
@@ -319,6 +322,36 @@
         return opt;
     };
 
+    /* JMFA */
+    var addAllItems = function(){
+        var group = false,
+        j = 0;
+        if (this.el.children.length) {
+            util.each(this.el.children, function(i, element) {
+                if (element.nodeName === "OPTGROUP") {
+
+                    group = util.createElement("ul", {
+                        class: "selectr-optgroup",
+                        role: "group",
+                        html: "<li class='selectr-optgroup--label'>" + element.label + "</li>"
+                    });
+
+                    util.each(element.children, function(x, el) {
+                        el.idx = j;
+                        group.appendChild(createItem.call(this, el, group));
+                        j++;
+                    }, this);
+                } else {
+                    element.idx = j;
+                    createItem.call(this, element);
+                    j++;
+                }
+            }, this);
+        }
+    };
+    /* fin JMFA */
+
+
     /**
      * Build the container
      * @return {Void}
@@ -328,7 +361,8 @@
         this.requiresPagination = this.config.pagination && this.config.pagination > 0;
 
         // Set width
-        if (isset(this.config, "width")) {
+        //if (isset(this.config, "width")) {
+        if (typeof this.config.width !== 'undefined'){
             if (util.isInt(this.config.width)) {
                 this.width = this.config.width + "px";
             } else {
@@ -350,7 +384,7 @@
         }
 
         // Mobile device
-        if (this.mobileDevice) {
+        if (this.mobileDevice && this.nativeDropdownMobile) {
             util.addClass(this.container, "selectr-mobile");
         } else {
             util.addClass(this.container, "selectr-desktop");
@@ -360,7 +394,7 @@
         this.el.tabIndex = -1;
 
         // Native dropdown
-        if (this.config.nativeDropdown || this.mobileDevice) {
+        if (this.config.nativeDropdown || (this.mobileDevice  && this.nativeDropdownMobile)) {
             util.addClass(this.el, "selectr-visible");
         } else {
             util.addClass(this.el, "selectr-hidden");
@@ -503,6 +537,9 @@
             this.options = [].slice.call(this.el.options);
         }
 
+        /* JMFA */
+        addAllItems.call(this);
+        /*                
         // Element may have optgroups so
         // iterate element.children instead of element.options
         var group = false,
@@ -529,6 +566,8 @@
                 }
             }, this);
         }
+        */
+       /* fin JMFA */
 
         // Options defined by the data option
         if (this.config.data && Array.isArray(this.config.data)) {
@@ -673,6 +712,7 @@
                 if (this.navIndex < this.items.length - 1) {
                     this.navIndex++;
                 }
+            case 27: // JMFA: ESCAPE
         }
 
         this.navigating = true;
@@ -743,7 +783,10 @@
         var docFrag = document.createDocumentFragment();
         var option = this.options[item.idx];
         var data = this.data ? this.data[item.idx] : option;
-        var elementData = { class: "selectr-tag" };
+        // JMFA:
+        // JMFA: var elementData = { class: "selectr-tag" };
+        var elementData = { class: ("selectr-tag"+" "+(data.className?data.className:"").trim())} // Classes from original "option" applied to "tag"
+        // fin JMFA
         if (this.customSelected){
             elementData.html = this.config.renderSelection(data); // asume xss prevention in custom render function
         } else {
@@ -1024,6 +1067,12 @@
             nativeDropdown: false,
 
             /**
+             * JMFA: Allow the use of the native dropdown on mobile devices (default false)
+             * @type {Boolean}
+             */
+             nativeDropdownMobile: false,
+
+            /**
              * Allow the use of native typing behavior for toggling, searching, selecting
              * @type {boolean}
              */
@@ -1094,7 +1143,7 @@
         if (!this.config.disabledMobile && /Android|webOS|iPhone|iPad|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent)) {
             this.mobileDevice = true;
         }
-
+        
         this.customOption = this.config.hasOwnProperty("renderOption") && typeof this.config.renderOption === "function";
         this.customSelected = this.config.hasOwnProperty("renderSelection") && typeof this.config.renderSelection === "function";
 
@@ -1168,7 +1217,7 @@
         this.events.navigate = navigate.bind(this);
         this.events.reset = this.reset.bind(this);
 
-        if (this.config.nativeDropdown || this.mobileDevice) {
+        if (this.config.nativeDropdown || (this.mobileDevice && this.nativeDropdownMobile)) {
 
             this.container.addEventListener("touchstart", function(e) {
                 if (e.changedTouches[0].target === that.el) {
@@ -1305,10 +1354,17 @@
                     return;
                 }
             });
-
+            /* JMFA: */
+            // When TAB is pressed, dropdown closes and loses focus
+            this.container.addEventListener("keydown", function(e) {
+                if(that.opened && e.key === "Tab"){
+                    that.close();
+                }
+            });
+            /* fin JMFA */
             // Close the dropdown on [esc] key
             this.container.addEventListener("keyup", function (e) {
-                if ( that.opened && e.key === "Escape" ) {
+                if ( that.opened && e.key === "Escape") {
                     that.close();
                     e.stopPropagation();
 
@@ -1487,6 +1543,13 @@
                 this.el.form.removeEventListener("reset", this.events.reset);
             });
         }
+        // JMFA:
+        this.selected.addEventListener("focus", function(e){
+            e.target.parentNode.classList.add('selectr-active');
+        });
+        this.selected.addEventListener("blur", function(e){
+            e.target.parentNode.classList.remove("selectr-active");
+        })
     };
 
     /**
@@ -1854,7 +1917,7 @@
                 this.data.push(data);
 
                 // fix for native iOS dropdown otherwise the native dropdown will be empty
-                if (this.mobileDevice) {
+                if (this.mobileDevice && this.nativeDropdownMobile) {
                     this.el.add(option);
                 }
 
@@ -1916,7 +1979,9 @@
                 index = option.idx;
 
                 // Remove the HTMLOptionElement
-                this.el.remove(option);
+                // JMFA: this.el.remove(option);
+                // JMFA: line abobe is a bug, you cannot remove element by element itself, you can remove by its index:
+                this.el.remove(index);
 
                 // Remove the reference from the option array
                 this.options.splice(index, 1);
@@ -2015,7 +2080,7 @@
 
             util.each( this.options, function ( i, option ) {
                 var item = this.items[option.idx];
-                var matches = compare( option.textContent.trim().toLowerCase().replace(/-|\s/g,""), string.replace(/-|\s/g,"") );
+                var matches = compare( option.textContent.trim().toLowerCase(), string );
 
                 if ( matches && !option.disabled ) {
                     results.push( { text: option.textContent, value: option.value } );
@@ -2092,7 +2157,7 @@
 
         this.opened = true;
 
-        if (this.mobileDevice || this.config.nativeDropdown) {
+        if (this.config.nativeDropdown || (this.mobileDevice && this.nativeDropdownMobile)) {
             util.addClass(this.container, "native-open");
 
             if (this.config.data && this.el.options.length === 0) {
@@ -2143,7 +2208,7 @@
         this.opened = false;
         this.navigating = false;
 
-        if (this.mobileDevice || this.config.nativeDropdown) {
+        if (this.config.nativeDropdown || (this.mobileDevice && this.nativeDropdownMobile)) {
             util.removeClass(this.container, "native-open");
             return;
         }
@@ -2398,6 +2463,113 @@
 
         return option;
     };
+    /* JMFA */
+    /* Reload all data and reset internal state */
+    Selectr.prototype.reload = function(){
+        // Empty the dropdown
+        util.truncate(this.tree);
+
+        // Reset variables
+        this.items = [];
+        this.options = [];
+        this.data = [];
+ 
+        this.navIndex = 0;
+ 
+        if (this.requiresPagination) {
+            this.requiresPagination = false;
+ 
+            this.pageIndex = 1;
+            this.pages = [];
+        }
+        if (this.el.options.length) {
+            this.options = [].slice.call(this.el.options);
+        }
+
+        addAllItems.call(this);
+
+        // Options defined by the data option
+        if (this.config.data && Array.isArray(this.config.data)) {
+            this.data = [];
+            var optgroup = false,
+                option;
+
+            group = false;
+            j = 0;
+
+            util.each(this.config.data, function(i, opt) {
+                // Check for group options
+                if (isset(opt, "children")) {
+                    optgroup = util.createElement("optgroup", {
+                        label: opt.text
+                    });
+
+                    group = util.createElement("ul", {
+                        class: "selectr-optgroup",
+                        role: "group",
+                        html: "<li class='selectr-optgroup--label'>" + opt.text + "</li>"
+                    });
+
+                    util.each(opt.children, function(x, data) {
+                        option = new Option(data.text, data.value, false, data.hasOwnProperty("selected") && data.selected === true);
+
+                        option.disabled = isset(data, "disabled");
+
+                        this.options.push(option);
+
+                        optgroup.appendChild(option);
+
+                        option.idx = j;
+
+                        group.appendChild(createItem.call(this, option, data));
+
+                        this.data[j] = data;
+
+                        j++;
+                    }, this);
+
+                    this.el.appendChild(optgroup);
+                } else {
+                    option = new Option(opt.text, opt.value, false, opt.hasOwnProperty("selected") && opt.selected === true);
+
+                    option.disabled = isset(opt, "disabled");
+
+                    this.options.push(option);
+
+                    option.idx = j;
+
+                    createItem.call(this, option, opt);
+
+                    this.data[j] = opt;
+
+                    j++;
+                }
+            }, this);
+        }
+
+        //this.setSelected(true);
+
+        var first;
+        this.navIndex = 0;
+        for (var i = 0; i < this.items.length; i++) {
+            first = this.items[i];
+
+            if (!util.hasClass(first, "disabled")) {
+
+                util.addClass(first, "active");
+                this.navIndex = i;
+                break;
+            }
+        }
+
+        // Check for pagination / infinite scroll
+        if (this.requiresPagination) {
+            this.pageIndex = 1;
+
+            // Create the pages
+            this.paginate();
+        }
+    }
 
     return Selectr;
 }));
