@@ -973,23 +973,24 @@
         if (!el) {
             throw new Error("You must supply either a HTMLSelectElement or a CSS3 selector string.");
         }
+        if(!el.dataset.selectr){       //JMFA if html select not yet converted into selectr
+            this.el = el;
 
-        this.el = el;
+            // CSS3 selector string
+            if (typeof el === "string") {
+                this.el = document.querySelector(el);
+            }
 
-        // CSS3 selector string
-        if (typeof el === "string") {
-            this.el = document.querySelector(el);
+            if (this.el === null) {
+                throw new Error("The element you passed to Selectr can not be found.");
+            }
+
+            if (this.el.nodeName.toLowerCase() !== "select") {
+                throw new Error("The element you passed to Selectr is not a HTMLSelectElement.");
+            }
+
+            this.render(config);
         }
-
-        if (this.el === null) {
-            throw new Error("The element you passed to Selectr can not be found.");
-        }
-
-        if (this.el.nodeName.toLowerCase() !== "select") {
-            throw new Error("The element you passed to Selectr is not a HTMLSelectElement.");
-        }
-
-        this.render(config);
     };
 
     /**
@@ -1107,6 +1108,9 @@
 
         // add instance reference (#87)
         this.el.selectr = this;
+
+        // JMFA: add the instance to a "data" property
+        this.el.dataset.selectr = this;
 
         // Merge defaults with user set config
         this.config = util.extend(defaultConfig, config);
@@ -2570,6 +2574,6 @@
             this.paginate();
         }
     }
-
+    
     return Selectr;
 }));
