@@ -64,6 +64,8 @@
   	flex-direction: row;
    	align-items: center;
 	min-height: 38px;
+	/* JMFA */
+	min-height: 30px;
 }
 
 .selectr-selected::before {
