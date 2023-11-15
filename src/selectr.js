@@ -1,7 +1,6 @@
 /*!
- * Selectr 2.4.14
- * http://mobius.ovh/docs/selectr
- *
+ * Selectr 2.4.15
+ * 
  * Released under the MIT license
  */
 (function(root, factory) {
@@ -16,6 +15,35 @@
     }
 }(this, function(plugin) {
     'use strict';
+
+    String.prototype.localeContains = function(sub) {
+        if(sub===""){
+            return true;
+        }
+        if(!sub || !this.length){
+            return false;
+        } 
+        sub = ""+sub;
+        if(sub.length>this.length) {
+            return false;
+        }
+        let ascii = s => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        return ascii(this).includes(ascii(sub));
+    }
+    String.prototype.localeStartsWith = function(sub) {
+        if(sub==="") {
+            return true;
+        }
+        if(!sub || !this.length) {
+            return false;
+        }
+        sub = ""+sub;
+        if(sub.length>this.length){
+            return false;
+        }
+        let ascii = s => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        return ascii(this).startsWith(ascii(sub));
+    }
 
     /**
      * Event Emitter
@@ -193,10 +221,15 @@
             };
         },
         includes: function(a, b) {
-            return a.indexOf(b) > -1;
+            if(typeof a === "string" && typeof b === "string"){
+                return a.localeContains(b);
+            }else {
+                return a.indexOf(b) > -1;
+            }
         },
         startsWith: function(a, b) {
-            return a.substr( 0, b.length ) === b;
+            return a.localeStartsWith(b);
+            // return a.substring( 0, b.length ) === b;
         },
         truncate: function(el) {
             while (el.firstChild) {
